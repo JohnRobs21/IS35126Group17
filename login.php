@@ -1,8 +1,4 @@
 <?php
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
-
 session_set_cookie_params([
     'lifetime' => 1800,
     'httponly' => true,
