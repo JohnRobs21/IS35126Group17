@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mail->isSMTP();
                     $mail->SMTPDebug = SMTP::DEBUG_SERVER;
                     $mail->Debugoutput = 'error_log';
-                    $mail->Host     = getenv('MAIL_HOST');
+                    $mail->Host = gethostbyname(getenv('MAIL_HOST'));
                     $mail->SMTPAuth   = true;
                     $mail->Username = getenv('MAIL_USER');
                     $mail->Password   = getenv('MAIL_PASS');
