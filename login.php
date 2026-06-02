@@ -78,65 +78,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$user['id']]);
 
                 // Generate OTP
-                $otp        = (string)rand(100000, 999999);
+                $otp = (string)rand(100000, 999999);
                 $otp_expiry = (new DateTime())->modify('+10 minutes')->format('Y-m-d H:i:s');
 
-                // Store plain OTP in DB (it's short-lived and single-use)
-                $stmt = $pdo->prepare('UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?');
+                // Save OTP to DB
+                $stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?");
                 $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
-                // Send OTP email via PHPMailer
-                $mail = new PHPMailer(true);
+                require 'vendor/autoload.php';
+
+                $email = new \SendGrid\Mail\Mail();
+
+                $email->setFrom(
+                    getenv('SENDGRID_FROM_EMAIL'),
+                    getenv('SENDGRID_FROM_NAME')
+                );
+
+                $email->setSubject("Your Login OTP Code — IS351 Airline");
+                $email->addTo($user['email'], $user['name']);
+
+                $email->addContent(
+                    "text/html",
+                    "
+                    <div style='font-family:sans-serif'>
+                        <h2>IS351 Airline System</h2>
+                        <p>Hello <b>{$user['name']}</b>,</p>
+
+                        <p>Your OTP code is:</p>
+
+                        <h1 style='letter-spacing:5px'>{$otp}</h1>
+
+                        <p>Expires in 10 minutes.</p>
+                    </div>
+                    "
+                );
+
+                $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
+
                 try {
-                    // Server settings
-                    $mail->Host = gethostbyname('smtp.gmail.com');
-                    $mail->isSMTP();
-                    $mail->SMTPDebug = SMTP::DEBUG_SERVER;
-                    $mail->Debugoutput = 'error_log';
-                    $mail->Host = gethostbyname(getenv('MAIL_HOST'));
-                    $mail->SMTPAuth   = true;
-                    $mail->Username = getenv('MAIL_USER');
-                    $mail->Password   = getenv('MAIL_PASS');
-                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port       = (int)getenv('MAIL_PORT');
-                    $mail->setFrom(getenv('MAIL_USER'), getenv('MAIL_FROM_NAME'));
+                    $response = $sendgrid->send($email);
 
-                    // Disable SSL verification for compatibility
-                    $mail->SMTPOptions = [
-                        'ssl' => [
-                            'verify_peer'       => false,
-                            'verify_peer_name'  => false,
-                            'allow_self_signed' => true
-                        ]
-                    ];
-
-                    // Recipients
-                    $mail->setFrom(getenv('MAIL_USER'), getenv('MAIL_FROM_NAME'));
-                    $mail->addAddress($user['email'], $user['name']);
-
-                    // Email content
-                    $mail->isHTML(true);
-                    $mail->Subject = 'Your Login OTP Code — IS351 Airline';
-                    $mail->Body    = '
-                        <div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:20px">
-                            <h2 style="color:#1d4ed8">IS351 Airline System</h2>
-                            <p>Hello <strong>' . htmlspecialchars($user['name']) . '</strong>,</p>
-                            <p>Your one-time login code is:</p>
-                            <div style="font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;
-                                        background:#f4f6f9;padding:20px;border-radius:8px;margin:20px 0">
-                                ' . $otp . '
-                            </div>
-                            <p>This code expires in <strong>10 minutes</strong>.</p>
-                            <p>If you did not request this code, please ignore this email.</p>
-                        </div>
-                    ';
-                    $mail->AltBody = 'Your OTP code is: ' . $otp . '. It expires in 10 minutes.';
-
-                    $mail->send();
+                    if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
+                        $_SESSION['pre_auth_user_id'] = $user['id'];
+                        header("Location: otp-verify.php");
+                        exit;
+                    } else {
+                        $error = "Failed to send OTP email. SendGrid error.";
+                    }
 
                 } catch (Exception $e) {
-                    error_log('PHPMailer Error: ' . $mail->ErrorInfo);
-                    $error = 'Could not send OTP email. Error: ' . $mail->ErrorInfo;
+                    $error = "SendGrid Exception: " . $e->getMessage();
                 }
 
                 if (empty($error)) {
