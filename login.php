@@ -90,12 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     // Server settings
                     $mail->isSMTP();
-                    $mail->Host       = $_ENV['MAIL_HOST'];
+                    $mail->Host     = getenv('MAIL_HOST');
                     $mail->SMTPAuth   = true;
-                    $mail->Username   = $_ENV['MAIL_USER'];
-                    $mail->Password   = $_ENV['MAIL_PASS'];
+                    $mail->Username = getenv('MAIL_USER');
+                    $mail->Password   = getenv('MAIL_PASS');
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port       = (int)$_ENV['MAIL_PORT'];
+                    $mail->Port       = (int)getenv('MAIL_PORT');
+                    $mail->setFrom(getenv('MAIL_USER'), getenv('MAIL_FROM_NAME'));
 
                     // Disable SSL verification for compatibility
                     $mail->SMTPOptions = [

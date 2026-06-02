@@ -61,10 +61,10 @@ $queries = [
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 )",
 "INSERT IGNORE INTO users (name, email, password_hash, role)
-VALUES ('Admin', 'your_real_email@gmail.com',
+VALUES ('Admin', 'is35126group17@gmail.com',
 '\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')",
 "INSERT IGNORE INTO users (name, email, password_hash, role)
-VALUES ('Staff', 'staff_real_email@gmail.com',
+VALUES ('Staff', 'is351staff@gmail.com',
 '\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'staff')"
 ];
 
