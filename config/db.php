@@ -8,12 +8,17 @@ if (file_exists($envFile)) {
     $dotenv->load();
 }
 
-// Get credentials from environment variables
 $db_host = $_ENV['DB_HOST'] ?? 'localhost';
 $db_name = $_ENV['DB_NAME'] ?? 'airline_db';
 $db_user = $_ENV['DB_USER'] ?? 'root';
 $db_pass = $_ENV['DB_PASS'] ?? '';
 $db_port = $_ENV['DB_PORT'] ?? '3306';
+
+// TEMPORARY DEBUG — remove before submission
+error_log('DB_HOST: ' . $db_host);
+error_log('DB_NAME: ' . $db_name);
+error_log('DB_USER: ' . $db_user);
+error_log('DB_PORT: ' . $db_port);
 
 try {
     $pdo = new PDO(
@@ -27,5 +32,6 @@ try {
         ]
     );
 } catch (PDOException $e) {
-    die('Database connection failed.');
+    // TEMPORARY — show actual error
+    die('Database connection failed: ' . $e->getMessage());
 }
