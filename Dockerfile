@@ -24,7 +24,8 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 RUN a2enmod rewrite php8.1
 
 # Configure Apache
-RUN echo '<VirtualHost *:80>\n\
+RUN echo 'ServerName localhost\n\
+<VirtualHost *:80>\n\
     DocumentRoot /var/www/html\n\
     <Directory /var/www/html>\n\
         Options Indexes FollowSymLinks\n\
