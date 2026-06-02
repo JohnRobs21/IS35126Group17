@@ -2,7 +2,7 @@
 session_set_cookie_params([
     'lifetime' => 1800,
     'httponly' => true,
-    'secure'   => isset($_SERVER['HTTPS']),
+    'secure'   => true,
     'samesite' => 'Strict'
 ]);
 
