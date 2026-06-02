@@ -10,7 +10,7 @@ require_once 'includes/security-headers.php';
 
 session_start();
 
-require_once 'vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 require_once 'config/db.php';
 require_once 'includes/auth.php';
 
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?");
                 $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
-                require 'vendor/autoload.php';
+                require __DIR__ . '/vendor/autoload.php';
 
                 $email = new \SendGrid\Mail\Mail();
 
