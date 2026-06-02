@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mail->Password   = getenv('MAIL_PASS');
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port       = (int)getenv('MAIL_PORT');
-                    $mail->setFrom(getenv('MAIL_USER'), getenv('MAIL_FROM_NAME'));
+                    $mail->setFrom(getenv('MAIL_HOST'), getenv('MAIL_FROM_NAME'));
 
                     // Disable SSL verification for compatibility
                     $mail->SMTPOptions = [
