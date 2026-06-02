@@ -1,6 +1,5 @@
 <?php
-require_once 'includes/security-headers.php';
-
+require_once 'vendor/autoload.php';
 session_set_cookie_params([
     'lifetime' => 1800,
     'httponly' => true,
@@ -10,7 +9,7 @@ session_set_cookie_params([
 
 session_start();
 
-require_once 'vendor/autoload.php';
+require_once 'includes/security-headers.php';
 require_once 'config/db.php';
 
 $client = new Google\Client();
