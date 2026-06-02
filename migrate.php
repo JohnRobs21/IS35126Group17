@@ -1,16 +1,23 @@
 <?php
-require_once 'vendor/autoload.php';
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->load();
+if (file_exists(__DIR__ . '/.env')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->load();
+}
+
+$db_host = getenv('DB_HOST') ?: 'localhost';
+$db_name = getenv('DB_NAME') ?: 'airline_db';
+$db_user = getenv('DB_USER') ?: 'root';
+$db_pass = getenv('DB_PASS') ?: '';
+$db_port = getenv('DB_PORT') ?: '3306';
 
 $pdo = new PDO(
-    'mysql:host=' . $_ENV['DB_HOST'] . ';dbname=' . $_ENV['DB_NAME'],
-    $_ENV['DB_USER'],
-    $_ENV['DB_PASS']
+    'mysql:host=' . $db_host . ';port=' . $db_port . ';dbname=' . $db_name,
+    $db_user, $db_pass
 );
 
-$sql = "
-CREATE TABLE IF NOT EXISTS users (
+$queries = [
+"CREATE TABLE IF NOT EXISTS users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
@@ -22,9 +29,8 @@ CREATE TABLE IF NOT EXISTS users (
     login_attempts INT DEFAULT 0,
     locked_until DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS flights (
+)",
+"CREATE TABLE IF NOT EXISTS flights (
     id INT PRIMARY KEY AUTO_INCREMENT,
     flight_number VARCHAR(20) NOT NULL UNIQUE,
     origin VARCHAR(100) NOT NULL,
@@ -35,9 +41,8 @@ CREATE TABLE IF NOT EXISTS flights (
     price DECIMAL(10,2) NOT NULL,
     status ENUM('scheduled','cancelled','completed') NOT NULL DEFAULT 'scheduled',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS bookings (
+)",
+"CREATE TABLE IF NOT EXISTS bookings (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     flight_id INT NOT NULL,
@@ -46,29 +51,25 @@ CREATE TABLE IF NOT EXISTS bookings (
     booked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (flight_id) REFERENCES flights(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS audit_logs (
+)",
+"CREATE TABLE IF NOT EXISTS audit_logs (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT DEFAULT NULL,
     action VARCHAR(255) NOT NULL,
     ip_address VARCHAR(45) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
+)",
+"INSERT IGNORE INTO users (name, email, password_hash, role)
+VALUES ('Admin', 'your_real_email@gmail.com',
+'\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')",
+"INSERT IGNORE INTO users (name, email, password_hash, role)
+VALUES ('Staff', 'staff_real_email@gmail.com',
+'\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'staff')"
+];
 
-INSERT IGNORE INTO users (name, email, password_hash, role)
-VALUES ('Admin', 'admin@airline.com',
-'\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
-
-INSERT IGNORE INTO users (name, email, password_hash, role)
-VALUES ('Staff', 'staff@airline.com',
-'\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'staff');
-";
-
-foreach (explode(';', $sql) as $query) {
-    $query = trim($query);
-    if ($query) $pdo->exec($query);
+foreach ($queries as $sql) {
+    $pdo->exec($sql);
 }
 
-echo 'Migration complete!';
+echo 'Migration complete! All tables created. DELETE THIS FILE NOW.';
