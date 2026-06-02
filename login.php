@@ -90,13 +90,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     // Server settings
                     $mail->isSMTP();
+                    $mail->SMTPDebug = SMTP::DEBUG_SERVER;
+                    $mail->Debugoutput = 'error_log';
                     $mail->Host     = getenv('MAIL_HOST');
                     $mail->SMTPAuth   = true;
                     $mail->Username = getenv('MAIL_USER');
                     $mail->Password   = getenv('MAIL_PASS');
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port       = (int)getenv('MAIL_PORT');
-                    $mail->setFrom(getenv('MAIL_HOST'), getenv('MAIL_FROM_NAME'));
+                    $mail->setFrom(getenv('MAIL_USER'), getenv('MAIL_FROM_NAME'));
 
                     // Disable SSL verification for compatibility
                     $mail->SMTPOptions = [
@@ -108,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ];
 
                     // Recipients
-                    $mail->setFrom($_ENV['MAIL_USER'], $_ENV['MAIL_FROM_NAME']);
+                    $mail->setFrom(getenv('MAIL_USER'), getenv('MAIL_FROM_NAME'));
                     $mail->addAddress($user['email'], $user['name']);
 
                     // Email content
