@@ -6,7 +6,7 @@ session_set_cookie_params([
     'samesite' => 'Strict'
 ]);
 
-require_once '../includes/security-headers.php';
+require_once __DIR__ . '/../includes/security-headers.php';
 session_start();
 
 require_once '../config/db.php';
