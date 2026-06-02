@@ -14,24 +14,14 @@ $db_user = $_ENV['DB_USER'] ?? 'root';
 $db_pass = $_ENV['DB_PASS'] ?? '';
 $db_port = $_ENV['DB_PORT'] ?? '3306';
 
-// TEMPORARY DEBUG — remove before submission
-error_log('DB_HOST: ' . $db_host);
-error_log('DB_NAME: ' . $db_name);
-error_log('DB_USER: ' . $db_user);
-error_log('DB_PORT: ' . $db_port);
-
 try {
-    $pdo = new PDO(
-        'mysql:host=' . $db_host . ';port=' . $db_port . ';dbname=' . $db_name . ';charset=utf8',
-        $db_user,
-        $db_pass,
-        [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false
-        ]
-    );
+    $dsn = 'mysql:host=' . $db_host . ';port=' . $db_port . ';dbname=' . $db_name . ';charset=utf8';
+    $pdo = new PDO($dsn, $db_user, $db_pass, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+        PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8'
+    ]);
 } catch (PDOException $e) {
-    // TEMPORARY — show actual error
     die('Database connection failed: ' . $e->getMessage());
 }
