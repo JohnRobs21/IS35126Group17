@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mail = new PHPMailer(true);
                 try {
                     // Server settings
+                    $mail->Host = gethostbyname('smtp.gmail.com');
                     $mail->isSMTP();
                     $mail->SMTPDebug = SMTP::DEBUG_SERVER;
                     $mail->Debugoutput = 'error_log';
