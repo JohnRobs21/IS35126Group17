@@ -1,24 +1,17 @@
 <?php
-// 1. Load dependencies first
-require_once __DIR__ . '/vendor/autoload.php';
-
-// 2. Configure session cookie rules BEFORE anything else runs
 session_set_cookie_params([
     'lifetime' => 1800,
     'httponly' => true,
-    'secure'   => true, // Force true since you're live on HTTPS on Railway now
+    'secure'   => isset($_SERVER['HTTPS']),
     'samesite' => 'Strict'
 ]);
 
-// 3. Start the session safely
+require_once 'includes/security-headers.php';
+
 session_start();
 
-// 4. NOW inject your security headers file
-require_once __DIR__ . '/includes/security-headers.php';
-
-// 5. Connect your system database and helper utilities
-require_once __DIR__ . '/config/db.php';
-require_once __DIR__ . '/includes/auth.php';
+require_once 'vendor/autoload.php';
+require_once 'config/db.php';
 
 $client = new Google\Client();
 $client->setClientId($_ENV['GOOGLE_CLIENT_ID']);
