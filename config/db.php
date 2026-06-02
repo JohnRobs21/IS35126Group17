@@ -9,11 +9,6 @@ if (file_exists($envFile)) {
     // TEMPORARY DEBUG
 }
 
-die('HOST=' . ($_ENV['DB_HOST'] ?? 'NOT SET') . 
-        ' | NAME=' . ($_ENV['DB_NAME'] ?? 'NOT SET') . 
-        ' | USER=' . ($_ENV['DB_USER'] ?? 'NOT SET') .
-        ' | PORT=' . ($_ENV['DB_PORT'] ?? 'NOT SET'));
-
 $db_host = $_ENV['DB_HOST'] ?? 'localhost';
 $db_name = $_ENV['DB_NAME'] ?? 'airline_db';
 $db_user = $_ENV['DB_USER'] ?? 'root';
