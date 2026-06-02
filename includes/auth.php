@@ -22,6 +22,8 @@ function check_session_timeout(): void {
 }
 
 function require_role(array $allowed_roles) {
+    check_session_timeout(); 
+    
     if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
         header('Location: /IS35126Group17/login.php');
         exit;
