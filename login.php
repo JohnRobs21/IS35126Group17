@@ -1,4 +1,8 @@
 <?php
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
 session_set_cookie_params([
     'lifetime' => 1800,
     'httponly' => true,
@@ -10,6 +14,7 @@ require_once 'includes/security-headers.php';
 
 session_start();
 
+require_once 'vendor/autoload.php';
 require_once 'config/db.php';
 require_once 'includes/auth.php';
 
@@ -73,31 +78,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$user['id']]);
 
                 // Generate OTP
-                $otp        = rand(100000, 999999);
+                $otp        = (string)rand(100000, 999999);
                 $otp_expiry = (new DateTime())->modify('+10 minutes')->format('Y-m-d H:i:s');
-                $otp_hash   = password_hash($otp, PASSWORD_BCRYPT);
 
+                // Store plain OTP in DB (it's short-lived and single-use)
                 $stmt = $pdo->prepare('UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?');
-                $stmt->execute([$otp_hash, $otp_expiry, $user['id']]);
+                $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
                 // Send OTP email via PHPMailer
-                require_once 'vendor/autoload.php';
-                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                $mail = new PHPMailer(true);
                 try {
+                    // Server settings
                     $mail->isSMTP();
                     $mail->Host       = $_ENV['MAIL_HOST'];
                     $mail->SMTPAuth   = true;
                     $mail->Username   = $_ENV['MAIL_USER'];
                     $mail->Password   = $_ENV['MAIL_PASS'];
-                    $mail->SMTPSecure = 'tls';
-                    $mail->Port       = $_ENV['MAIL_PORT'];
+                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port       = (int)$_ENV['MAIL_PORT'];
+
+                    // Disable SSL verification for compatibility
+                    $mail->SMTPOptions = [
+                        'ssl' => [
+                            'verify_peer'       => false,
+                            'verify_peer_name'  => false,
+                            'allow_self_signed' => true
+                        ]
+                    ];
+
+                    // Recipients
                     $mail->setFrom($_ENV['MAIL_USER'], $_ENV['MAIL_FROM_NAME']);
                     $mail->addAddress($user['email'], $user['name']);
-                    $mail->Subject = 'Your Login OTP Code';
-                    $mail->Body    = 'Your OTP code is: ' . $otp . "\n\nThis code expires in 10 minutes.";
+
+                    // Email content
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Your Login OTP Code — IS351 Airline';
+                    $mail->Body    = '
+                        <div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:20px">
+                            <h2 style="color:#1d4ed8">IS351 Airline System</h2>
+                            <p>Hello <strong>' . htmlspecialchars($user['name']) . '</strong>,</p>
+                            <p>Your one-time login code is:</p>
+                            <div style="font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;
+                                        background:#f4f6f9;padding:20px;border-radius:8px;margin:20px 0">
+                                ' . $otp . '
+                            </div>
+                            <p>This code expires in <strong>10 minutes</strong>.</p>
+                            <p>If you did not request this code, please ignore this email.</p>
+                        </div>
+                    ';
+                    $mail->AltBody = 'Your OTP code is: ' . $otp . '. It expires in 10 minutes.';
+
                     $mail->send();
+
                 } catch (Exception $e) {
-                    $error = 'Could not send OTP email. Please try again.';
+                    error_log('PHPMailer Error: ' . $mail->ErrorInfo);
+                    $error = 'Could not send OTP email. Error: ' . $mail->ErrorInfo;
                 }
 
                 if (empty($error)) {
@@ -167,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <svg width="18" height="18" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
                 <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
                 <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
             Continue with Google
