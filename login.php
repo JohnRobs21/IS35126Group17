@@ -1,31 +1,23 @@
 <?php
-// 1. Load dependencies first
 require_once __DIR__ . '/vendor/autoload.php';
 
-// 2. Configure session cookie rules BEFORE anything else runs
 session_set_cookie_params([
     'lifetime' => 1800,
     'httponly' => true,
-    'secure'   => true, // Force true since you're live on HTTPS on Railway now
+    'secure'   => true,
     'samesite' => 'Strict'
 ]);
 
-// 3. Start the session safely
 session_start();
 
-// 4. NOW inject your security headers file
 require_once __DIR__ . '/includes/security-headers.php';
-
-// 5. Connect your system database and helper utilities
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
-// Redirect already logged in users
 if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
     redirect_by_role($_SESSION['role']);
 }
 
-// Generate CSRF token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -33,8 +25,6 @@ if (empty($_SESSION['csrf_token'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    // Verify CSRF token
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
         $error = 'Invalid request. Please try again.';
     } else {
@@ -46,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = 'Invalid email format.';
         } else {
-            // Fetch user
             $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
             $stmt->execute([$email]);
             $user = $stmt->fetch();
@@ -54,15 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$user) {
                 $error = 'Invalid email or password.';
             } elseif ($user['locked_until'] && new DateTime() < new DateTime($user['locked_until'])) {
-                // Account is locked
                 $remaining = (new DateTime($user['locked_until']))->diff(new DateTime());
                 $error = 'Account locked. Try again in ' . $remaining->i . ' minute(s).';
             } elseif (!password_verify($password, $user['password_hash'])) {
-                // Wrong password — increment attempts
                 $attempts = $user['login_attempts'] + 1;
-
                 if ($attempts >= 5) {
-                    // Lock the account for 15 minutes
                     $locked_until = (new DateTime())->modify('+15 minutes')->format('Y-m-d H:i:s');
                     $stmt = $pdo->prepare('UPDATE users SET login_attempts = ?, locked_until = ? WHERE id = ?');
                     $stmt->execute([$attempts, $locked_until, $user['id']]);
@@ -75,60 +60,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Invalid email or password. ' . $remaining . ' attempt(s) remaining.';
                 }
             } else {
-                // Password correct — reset attempts and send OTP
                 $stmt = $pdo->prepare('UPDATE users SET login_attempts = 0, locked_until = NULL WHERE id = ?');
                 $stmt->execute([$user['id']]);
 
                 // Generate OTP
-                $otp = (string)rand(100000, 999999);
+                $otp        = (string)rand(100000, 999999);
                 $otp_expiry = (new DateTime())->modify('+10 minutes')->format('Y-m-d H:i:s');
 
-                // Save OTP to DB
-                $stmt = $pdo->prepare("UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?");
+                $stmt = $pdo->prepare('UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?');
                 $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
-                require __DIR__ . '/vendor/autoload.php';
-
-                $email = new \SendGrid\Mail\Mail();
-
-                $email->setFrom(
-                    getenv('SENDGRID_FROM_EMAIL'),
-                    getenv('SENDGRID_FROM_NAME')
-                );
-
-                $email->setSubject("Your Login OTP Code — IS351 Airline");
-                $email->addTo($user['email'], $user['name']);
-
-                $email->addContent(
-                    "text/html",
-                    "
-                    <div style='font-family:sans-serif'>
-                        <h2>IS351 Airline System</h2>
-                        <p>Hello <b>{$user['name']}</b>,</p>
-
-                        <p>Your OTP code is:</p>
-
-                        <h1 style='letter-spacing:5px'>{$otp}</h1>
-
-                        <p>Expires in 10 minutes.</p>
-                    </div>
-                    "
-                );
-
-                $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
-
+                // Try SendGrid — don't block on failure
                 try {
-                    $sendgrid->send($email);
-                    // Try to send, but don't block on failure
+                    $sg_email = new \SendGrid\Mail\Mail();
+                    $sg_email->setFrom(getenv('SENDGRID_FROM_EMAIL'), getenv('SENDGRID_FROM_NAME'));
+                    $sg_email->setSubject('Your Login OTP Code — IS351 Airline');
+                    $sg_email->addTo($user['email'], $user['name']);
+                    $sg_email->addContent('text/html', '
+                        <div style="font-family:sans-serif">
+                            <h2>IS351 Airline System</h2>
+                            <p>Hello <b>' . htmlspecialchars($user['name']) . '</b>,</p>
+                            <p>Your OTP code is:</p>
+                            <h1 style="letter-spacing:5px">' . $otp . '</h1>
+                            <p>Expires in 10 minutes.</p>
+                        </div>
+                    ');
+                    $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
+                    $sendgrid->send($sg_email);
                 } catch (Exception $e) {
-                    // Log error but continue
+                    error_log('SendGrid error: ' . $e->getMessage());
                 }
 
-                // Always redirect to OTP page since we stored the OTP in database
+                // Always redirect regardless of SendGrid
                 $_SESSION['pre_auth_user_id'] = $user['id'];
                 log_action($pdo, $user['id'], 'OTP sent — login in progress');
                 header('Location: otp-verify.php');
                 exit;
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -166,15 +137,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="POST" action="login.php">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-
         <label for="email">Email address</label>
         <input type="email" id="email" name="email"
                value="<?= htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                required autofocus>
-
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required>
-
         <button type="submit" class="btn">Sign in</button>
     </form>
 
