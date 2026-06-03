@@ -90,6 +90,5 @@ try {
     redirect_by_role($user['role']);
 
 } catch (Exception $e) {
-    header('Location: login.php?error=google_failed');
-    exit;
+    die('Google OAuth Error: ' . $e->getMessage());
 }
