@@ -78,6 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare('UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?');
                 $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
+                                // TEMP DEBUG
+                if (empty($_ENV['SENDGRID_API_KEY'] ?? getenv('SENDGRID_API_KEY'))) {
+                    $_SESSION['mail_error'] = 'SendGrid API key is empty!';
+                    $_SESSION['pre_auth_user_id'] = $user['id'];
+                    header('Location: otp-verify.php');
+                    exit;
+                }
                // Send OTP via SendGrid
                 try {
                     $sg_email = new \SendGrid\Mail\Mail();
