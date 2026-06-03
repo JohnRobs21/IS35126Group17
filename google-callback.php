@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 session_set_cookie_params([
     'lifetime' => 1800,
     'httponly' => true,
@@ -6,47 +9,36 @@ session_set_cookie_params([
     'samesite' => 'Strict'
 ]);
 
-require_once 'includes/security-headers.php';
-
 session_start();
-
-// TEMP DEBUG
-if (!isset($_GET['code'])) {
-    die('No code. GET params: ' . print_r($_GET, true) . ' | REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
-}
 
 require_once 'vendor/autoload.php';
 require_once 'config/db.php';
 require_once 'includes/auth.php';
 
 $client = new Google\Client();
-$client->setClientId($_ENV['GOOGLE_CLIENT_ID'] ?? getenv('GOOGLE_CLIENT_ID'));
-$client->setClientSecret($_ENV['GOOGLE_CLIENT_SECRET'] ?? getenv('GOOGLE_CLIENT_SECRET'));
-$client->setRedirectUri($_ENV['GOOGLE_REDIRECT_URI'] ?? getenv('GOOGLE_REDIRECT_URI'));
-
-$error = '';
+$client->setClientId(getenv('GOOGLE_CLIENT_ID'));
+$client->setClientSecret(getenv('GOOGLE_CLIENT_SECRET'));
+$client->setRedirectUri(getenv('GOOGLE_REDIRECT_URI'));
+$client->addScope('email');
+$client->addScope('profile');
 
 if (isset($_GET['error'])) {
-    header('Location: login.php?error=google_cancelled');
-    exit;
+    die('Google error: ' . $_GET['error']);
 }
 
 if (!isset($_GET['code'])) {
-    header('Location: login.php?error=google_failed');
-    exit;
+    die('No code received from Google');
 }
 
 try {
-    // Exchange code for token
     $token = $client->fetchAccessTokenWithAuthCode($_GET['code']);
 
     if (isset($token['error'])) {
-        throw new Exception('Token error: ' . $token['error']);
+        die('Token error: ' . print_r($token, true));
     }
 
     $client->setAccessToken($token);
 
-    // Get user info from Google
     $google_service = new Google\Service\Oauth2($client);
     $google_user    = $google_service->userinfo->get();
 
@@ -55,22 +47,19 @@ try {
     $google_name  = $google_user->getName();
 
     if (empty($google_email)) {
-        throw new Exception('Could not retrieve email from Google.');
+        die('Could not get email from Google');
     }
 
-    // Check if user exists by google_id or email
     $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ? OR email = ?');
     $stmt->execute([$google_id, $google_email]);
     $user = $stmt->fetch();
 
     if ($user) {
-        // Update google_id if they registered normally before
         if (empty($user['google_id'])) {
             $stmt = $pdo->prepare('UPDATE users SET google_id = ? WHERE id = ?');
             $stmt->execute([$google_id, $user['id']]);
         }
     } else {
-        // Create new passenger account
         $stmt = $pdo->prepare('
             INSERT INTO users (name, email, google_id, role)
             VALUES (?, ?, ?, "passenger")
@@ -84,7 +73,6 @@ try {
         log_action($pdo, $user['id'], 'New account created via Google OAuth');
     }
 
-    // Set session — Google login skips OTP
     session_regenerate_id(true);
     $_SESSION['authenticated'] = true;
     $_SESSION['user_id']       = $user['id'];
@@ -96,12 +84,5 @@ try {
     redirect_by_role($user['role']);
 
 } catch (Exception $e) {
-<<<<<<< HEAD
-    die('Google OAuth Error: ' . $e->getMessage());
+    die('Exception: ' . $e->getMessage() . '<br>File: ' . $e->getFile() . '<br>Line: ' . $e->getLine());
 }
-=======
-    //header('Location: login.php?error=google_failed');
-    //exit;
-    die('Google error: ' . $e->getMessage());
-}
->>>>>>> d3486dccdc9486c5ee48ed14a18ed6e370b9db79
