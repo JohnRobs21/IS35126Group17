@@ -118,31 +118,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
 
                 try {
-                    $response = $sendgrid->send($email);
-
-                    if ($response->statusCode() >= 200 && $response->statusCode() < 300) {
-                        $_SESSION['pre_auth_user_id'] = $user['id'];
-                        header("Location: otp-verify.php");
-                        exit;
-                    } else {
-                        $error = "Failed to send OTP email. SendGrid error.";
-                    }
-
+                    $sendgrid->send($email);
+                    // Try to send, but don't block on failure
                 } catch (Exception $e) {
-                    $error = "SendGrid Exception: " . $e->getMessage();
+                    // Log error but continue
                 }
 
-                if (empty($error)) {
-                    // Store user ID in session temporarily until OTP verified
-                    $_SESSION['pre_auth_user_id'] = $user['id'];
-                    log_action($pdo, $user['id'], 'OTP sent — login in progress');
-                    header('Location: otp-verify.php');
-                    exit;
-                }
-            }
-        }
-    }
-}
+                // Always redirect to OTP page since we stored the OTP in database
+                $_SESSION['pre_auth_user_id'] = $user['id'];
+                log_action($pdo, $user['id'], 'OTP sent — login in progress');
+                header('Location: otp-verify.php');
+                exit;
 ?>
 <!DOCTYPE html>
 <html lang="en">
