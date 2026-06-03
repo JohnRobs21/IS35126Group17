@@ -1,18 +1,18 @@
 <?php
+<?php
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-session_set_cookie_params([
-    'lifetime' => 1800,
-    'httponly' => true,
-    'secure'   => isset($_SERVER['HTTPS']),
-    'samesite' => 'Strict'
-]);
-
-session_start();
-
-// TEMPORARY DEBUG
-die('GET params: ' . print_r($_GET, true) . '<br>SESSION: ' . print_r($_SESSION, true));
+// Remove the debug die() and add proper session handling
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 1800,
+        'httponly' => true,
+        'secure'   => true,
+        'samesite' => 'Lax' // Change from Strict to Lax for OAuth
+    ]);
+    session_start();
+}
 
 require_once 'vendor/autoload.php';
 require_once 'config/db.php';
