@@ -78,25 +78,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare('UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?');
                 $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
-               // Send OTP via PHPMailer
+               // Send OTP via SendGrid
                 try {
-                    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                    $mail->SMTPDebug = 2;
-                    $mail->Debugoutput = function($str, $level) {
-                        $_SESSION['smtp_debug'] = ($_SESSION['smtp_debug'] ?? '') . $str . "\n";
-                    };
-                    $mail->isSMTP();
-                    $mail->Host     = $_ENV['MAIL_HOST']     ?? $_SERVER['MAIL_HOST']     ?? getenv('MAIL_HOST');
-                    $mail->SMTPAuth   = true;
-                    $mail->Username = $_ENV['MAIL_USER']     ?? $_SERVER['MAIL_USER']     ?? getenv('MAIL_USER');
-                    $mail->Password = $_ENV['MAIL_PASS']     ?? $_SERVER['MAIL_PASS']     ?? getenv('MAIL_PASS');
-                    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
-                    $mail->Port     = (int)($_ENV['MAIL_PORT'] ?? $_SERVER['MAIL_PORT']   ?? getenv('MAIL_PORT') ?: 465);
-                    $mail->setFrom($_ENV['MAIL_USER']        ?? $_SERVER['MAIL_USER']        ?? getenv('MAIL_USER'),$_ENV['MAIL_FROM_NAME']   ?? $_SERVER['MAIL_FROM_NAME']   ?? getenv('MAIL_FROM_NAME'));
-                    $mail->addAddress($user['email'], $user['name']);
-                    $mail->Subject = 'Your Login OTP Code — IS351 Airline';
-                    $mail->isHTML(true);
-                    $mail->Body = '
+                    $sg_email = new \SendGrid\Mail\Mail();
+                    $sg_email->setFrom(
+                        $_ENV['SENDGRID_FROM_EMAIL'] ?? getenv('SENDGRID_FROM_EMAIL'),
+                        $_ENV['SENDGRID_FROM_NAME'] ?? getenv('SENDGRID_FROM_NAME')
+                    );
+                    $sg_email->setSubject('Your Login OTP Code — IS351 Airline');
+                    $sg_email->addTo($user['email'], $user['name']);
+                    $sg_email->addContent('text/html', '
                         <div style="font-family:sans-serif">
                             <h2>IS351 Airline System</h2>
                             <p>Hello <b>' . htmlspecialchars($user['name']) . '</b>,</p>
@@ -104,11 +95,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <h1 style="letter-spacing:5px">' . $otp . '</h1>
                             <p>Expires in 10 minutes.</p>
                         </div>
-                    ';
-                    $mail->send();
+                    ');
+                    $sendgrid = new \SendGrid(
+                        $_ENV['SENDGRID_API_KEY'] ?? getenv('SENDGRID_API_KEY')
+                    );
+                    $response = $sendgrid->send($sg_email);
+                    if ($response->statusCode() < 200 || $response->statusCode() >= 300) {
+                        $_SESSION['mail_error'] = 'SendGrid status: ' . $response->statusCode() . ' ' . $response->body();
+                    }
                 } catch (Exception $e) {
-                    //error_log('PHPMailer error: ' . $e->getMessage());
-                   $_SESSION['mail_error'] = $e->getMessage() . ' | SMTP: ' . ($_SESSION['smtp_debug'] ?? 'no debug');
+                    $_SESSION['mail_error'] = 'SendGrid error: ' . $e->getMessage();
                 }
 
                 // Always redirect regardless of SendGrid
