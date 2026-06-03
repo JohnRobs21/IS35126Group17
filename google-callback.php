@@ -10,6 +10,11 @@ require_once 'includes/security-headers.php';
 
 session_start();
 
+// TEMP DEBUG
+if (!isset($_GET['code'])) {
+    die('No code. GET params: ' . print_r($_GET, true) . ' | REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+}
+
 require_once 'vendor/autoload.php';
 require_once 'config/db.php';
 require_once 'includes/auth.php';
