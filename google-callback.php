@@ -11,6 +11,9 @@ session_set_cookie_params([
 
 session_start();
 
+// TEMPORARY DEBUG
+die('GET params: ' . print_r($_GET, true) . '<br>SESSION: ' . print_r($_SESSION, true));
+
 require_once 'vendor/autoload.php';
 require_once 'config/db.php';
 require_once 'includes/auth.php';
