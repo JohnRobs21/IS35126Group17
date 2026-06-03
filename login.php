@@ -42,6 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$user) {
                 $error = 'Invalid email or password.';
+                
+            } elseif ($user['locked_until'] && new DateTime() > new DateTime($user['locked_until'])) {
+                // Lockout period expired — reset attempts
+                $stmt = $pdo->prepare('UPDATE users SET login_attempts = 0, locked_until = NULL WHERE id = ?');
+                $stmt->execute([$user['id']]);
+                $user['login_attempts'] = 0;
+                $user['locked_until'] = null;
+                
             } elseif ($user['locked_until'] && new DateTime() < new DateTime($user['locked_until'])) {
                 $remaining = (new DateTime($user['locked_until']))->diff(new DateTime());
                 $error = 'Account locked. Try again in ' . $remaining->i . ' minute(s).';
@@ -70,10 +78,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare('UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?');
                 $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
-                // Try SendGrid — don't block on failure
+                                // TEMP DEBUG
+                if (empty($_ENV['SENDGRID_API_KEY'] ?? getenv('SENDGRID_API_KEY'))) {
+                    $_SESSION['mail_error'] = 'SendGrid API key is empty!';
+                    $_SESSION['pre_auth_user_id'] = $user['id'];
+                    header('Location: otp-verify.php');
+                    exit;
+                }
+               // Send OTP via SendGrid
                 try {
                     $sg_email = new \SendGrid\Mail\Mail();
-                    $sg_email->setFrom(getenv('SENDGRID_FROM_EMAIL'), getenv('SENDGRID_FROM_NAME'));
+                    $sg_email->setFrom(
+                        $_ENV['SENDGRID_FROM_EMAIL'] ?? getenv('SENDGRID_FROM_EMAIL'),
+                        $_ENV['SENDGRID_FROM_NAME'] ?? getenv('SENDGRID_FROM_NAME')
+                    );
                     $sg_email->setSubject('Your Login OTP Code — IS351 Airline');
                     $sg_email->addTo($user['email'], $user['name']);
                     $sg_email->addContent('text/html', '
@@ -85,10 +103,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p>Expires in 10 minutes.</p>
                         </div>
                     ');
-                    $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
-                    $sendgrid->send($sg_email);
+                    $sendgrid = new \SendGrid(
+                        $_ENV['SENDGRID_API_KEY'] ?? getenv('SENDGRID_API_KEY')
+                    );
+                    $response = $sendgrid->send($sg_email);
+                    if ($response->statusCode() < 200 || $response->statusCode() >= 300) {
+                        $_SESSION['mail_error'] = 'SendGrid status: ' . $response->statusCode() . ' ' . $response->body();
+                    }
                 } catch (Exception $e) {
-                    error_log('SendGrid error: ' . $e->getMessage());
+                    $_SESSION['mail_error'] = 'SendGrid error: ' . $e->getMessage();
                 }
 
                 // Always redirect regardless of SendGrid
@@ -133,6 +156,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php if ($error): ?>
         <div class="error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php endif; ?>
+
+    <?php if (!empty($_SESSION['mail_error'])): ?>
+    <div class="error">Mail error: <?= htmlspecialchars($_SESSION['mail_error'], ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
 
     <form method="POST" action="login.php">

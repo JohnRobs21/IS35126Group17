@@ -10,14 +10,19 @@ require_once 'includes/security-headers.php';
 
 session_start();
 
+// TEMP DEBUG
+if (!isset($_GET['code'])) {
+    die('No code. GET params: ' . print_r($_GET, true) . ' | REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+}
+
 require_once 'vendor/autoload.php';
 require_once 'config/db.php';
 require_once 'includes/auth.php';
 
 $client = new Google\Client();
-$client->setClientId($_ENV['GOOGLE_CLIENT_ID']);
-$client->setClientSecret($_ENV['GOOGLE_CLIENT_SECRET']);
-$client->setRedirectUri($_ENV['GOOGLE_REDIRECT_URI']);
+$client->setClientId($_ENV['GOOGLE_CLIENT_ID'] ?? getenv('GOOGLE_CLIENT_ID'));
+$client->setClientSecret($_ENV['GOOGLE_CLIENT_SECRET'] ?? getenv('GOOGLE_CLIENT_SECRET'));
+$client->setRedirectUri($_ENV['GOOGLE_REDIRECT_URI'] ?? getenv('GOOGLE_REDIRECT_URI'));
 
 $error = '';
 
@@ -85,10 +90,18 @@ try {
     $_SESSION['user_id']       = $user['id'];
     $_SESSION['user_name']     = $user['name'];
     $_SESSION['role']          = $user['role'];
+    $_SESSION['last_activity'] = time();
 
     log_action($pdo, $user['id'], 'Logged in via Google OAuth');
     redirect_by_role($user['role']);
 
 } catch (Exception $e) {
+<<<<<<< HEAD
     die('Google OAuth Error: ' . $e->getMessage());
 }
+=======
+    //header('Location: login.php?error=google_failed');
+    //exit;
+    die('Google error: ' . $e->getMessage());
+}
+>>>>>>> d3486dccdc9486c5ee48ed14a18ed6e370b9db79
