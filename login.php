@@ -70,13 +70,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare('UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?');
                 $stmt->execute([$otp, $otp_expiry, $user['id']]);
 
-                // Try SendGrid — don't block on failure
+               // Send OTP via PHPMailer
                 try {
-                    $sg_email = new \SendGrid\Mail\Mail();
-                    $sg_email->setFrom(getenv('SENDGRID_FROM_EMAIL'), getenv('SENDGRID_FROM_NAME'));
-                    $sg_email->setSubject('Your Login OTP Code — IS351 Airline');
-                    $sg_email->addTo($user['email'], $user['name']);
-                    $sg_email->addContent('text/html', '
+                    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                    $mail->isSMTP();
+                    $mail->Host       = $_ENV['MAIL_HOST'];
+                    $mail->SMTPAuth   = true;
+                    $mail->Username   = $_ENV['MAIL_USER'];
+                    $mail->Password   = $_ENV['MAIL_PASS'];
+                    $mail->SMTPSecure = $_ENV['MAIL_SECURE'];
+                    $mail->Port       = (int)$_ENV['MAIL_PORT'];
+                    $mail->setFrom($_ENV['MAIL_USER'], $_ENV['MAIL_FROM_NAME']);
+                    $mail->addAddress($user['email'], $user['name']);
+                    $mail->Subject = 'Your Login OTP Code — IS351 Airline';
+                    $mail->isHTML(true);
+                    $mail->Body = '
                         <div style="font-family:sans-serif">
                             <h2>IS351 Airline System</h2>
                             <p>Hello <b>' . htmlspecialchars($user['name']) . '</b>,</p>
@@ -84,11 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <h1 style="letter-spacing:5px">' . $otp . '</h1>
                             <p>Expires in 10 minutes.</p>
                         </div>
-                    ');
-                    $sendgrid = new \SendGrid(getenv('SENDGRID_API_KEY'));
-                    $sendgrid->send($sg_email);
+                    ';
+                    $mail->send();
                 } catch (Exception $e) {
-                    error_log('SendGrid error: ' . $e->getMessage());
+                    error_log('PHPMailer error: ' . $e->getMessage());
                 }
 
                 // Always redirect regardless of SendGrid
