@@ -78,8 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mail->SMTPAuth   = true;
                     $mail->Username   = $_ENV['MAIL_USER'];
                     $mail->Password   = $_ENV['MAIL_PASS'];
-                    $mail->SMTPSecure = $_ENV['MAIL_SECURE'];
-                    $mail->Port       = (int)$_ENV['MAIL_PORT'];
+                    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+                    $mail->Port       = 465;
                     $mail->setFrom($_ENV['MAIL_USER'], $_ENV['MAIL_FROM_NAME']);
                     $mail->addAddress($user['email'], $user['name']);
                     $mail->Subject = 'Your Login OTP Code — IS351 Airline';
@@ -95,8 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ';
                     $mail->send();
                 } catch (Exception $e) {
-                    //error_log('PHPMailer error: ' . $e->getMessage());
-                    $_SESSION['mail_error'] = $e->getMessage();
+                    error_log('PHPMailer error: ' . $e->getMessage());
+                    //$_SESSION['mail_error'] = $e->getMessage();
                 }
 
                 // Always redirect regardless of SendGrid
