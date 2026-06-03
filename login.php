@@ -15,7 +15,9 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
 if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
-    redirect_by_role($_SESSION['role']);
+    if (!isset($_GET['error']) || $_GET['error'] !== 'unauthorized') {
+        redirect_by_role($_SESSION['role']);
+    }
 }
 
 if (empty($_SESSION['csrf_token'])) {
@@ -23,6 +25,9 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 $error = '';
+if (isset($_GET['error']) && $_GET['error'] === 'unauthorized') {
+    $error = 'You do not have permission to access that page.';
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
