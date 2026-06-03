@@ -96,6 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($error): ?>
         <div class="error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
+    <?php if (!empty($_SESSION['mail_error'])): ?>
+    <div class="error">Mail error: <?= htmlspecialchars($_SESSION['mail_error'], ENT_QUOTES, 'UTF-8') ?></div>
+    <?php unset($_SESSION['mail_error']); ?>
+    <?php endif; ?>
 
     <form method="POST" action="otp-verify.php">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
