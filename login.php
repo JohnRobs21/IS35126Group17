@@ -95,7 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ';
                     $mail->send();
                 } catch (Exception $e) {
-                    error_log('PHPMailer error: ' . $e->getMessage());
+                    //error_log('PHPMailer error: ' . $e->getMessage());
+                    $_SESSION['mail_error'] = $e->getMessage();
                 }
 
                 // Always redirect regardless of SendGrid
@@ -140,6 +141,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php if ($error): ?>
         <div class="error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php endif; ?>
+
+    <?php if (!empty($_SESSION['mail_error'])): ?>
+    <div class="error">Mail error: <?= htmlspecialchars($_SESSION['mail_error'], ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
 
     <form method="POST" action="login.php">
