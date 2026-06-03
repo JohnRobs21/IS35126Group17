@@ -42,6 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$user) {
                 $error = 'Invalid email or password.';
+                
+            } elseif ($user['locked_until'] && new DateTime() > new DateTime($user['locked_until'])) {
+                // Lockout period expired — reset attempts
+                $stmt = $pdo->prepare('UPDATE users SET login_attempts = 0, locked_until = NULL WHERE id = ?');
+                $stmt->execute([$user['id']]);
+                $user['login_attempts'] = 0;
+                $user['locked_until'] = null;
+                
             } elseif ($user['locked_until'] && new DateTime() < new DateTime($user['locked_until'])) {
                 $remaining = (new DateTime($user['locked_until']))->diff(new DateTime());
                 $error = 'Account locked. Try again in ' . $remaining->i . ' minute(s).';
