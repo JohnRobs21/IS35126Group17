@@ -25,6 +25,9 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 $error = '';
+if (isset($_GET['error']) && $_GET['error'] === 'unauthorized') {
+    $error = 'You do not have permission to access that page.';
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
