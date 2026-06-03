@@ -81,6 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                // Send OTP via PHPMailer
                 try {
                     $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                    $mail->SMTPDebug = 2;
+                    $mail->Debugoutput = function($str, $level) {
+                        $_SESSION['smtp_debug'] = ($_SESSION['smtp_debug'] ?? '') . $str . "\n";
+                    };
                     $mail->isSMTP();
                     $mail->Host       = $_ENV['MAIL_HOST'];
                     $mail->SMTPAuth   = true;
@@ -103,8 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ';
                     $mail->send();
                 } catch (Exception $e) {
-                    error_log('PHPMailer error: ' . $e->getMessage());
-                    //$_SESSION['mail_error'] = $e->getMessage();
+                    //error_log('PHPMailer error: ' . $e->getMessage());
+                   $_SESSION['mail_error'] = $e->getMessage() . ' | SMTP: ' . ($_SESSION['smtp_debug'] ?? 'no debug');
                 }
 
                 // Always redirect regardless of SendGrid
