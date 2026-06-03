@@ -1,35 +1,31 @@
 <?php
-define('SESSION_TIMEOUT', 1800); // 30 minutes
+define('SESSION_TIMEOUT', 1800);
 
 function check_session_timeout(): void {
     if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
-        return; // Not logged in, nothing to check
+        return;
     }
-
     if (isset($_SESSION['last_activity'])) {
         $inactive = time() - $_SESSION['last_activity'];
         if ($inactive > SESSION_TIMEOUT) {
-            // Session expired — destroy and redirect
             session_unset();
             session_destroy();
-            header('Location: /IS35126Group17/login.php?error=session_expired');
+            header('Location: /login.php?error=session_expired');
             exit;
         }
     }
-
-    // Update last activity timestamp on every request
     $_SESSION['last_activity'] = time();
 }
 
 function require_role(array $allowed_roles) {
-    check_session_timeout(); 
-    
+    check_session_timeout();
+
     if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
-        header('Location: /IS35126Group17/login.php');
+        header('Location: /login.php');
         exit;
     }
     if (!in_array($_SESSION['role'], (array)$allowed_roles)) {
-        header('Location: /IS35126Group17/login.php?error=unauthorized');
+        header('Location: /login.php?error=unauthorized');
         exit;
     }
 }
@@ -37,13 +33,13 @@ function require_role(array $allowed_roles) {
 function redirect_by_role(string $role): void {
     switch ($role) {
         case 'admin':
-            header('Location: /IS35126Group17/admin/dashboard.php');
+            header('Location: /admin/dashboard.php');
             break;
         case 'staff':
-            header('Location: /IS35126Group17/staff/dashboard.php');
+            header('Location: /staff/dashboard.php');
             break;
         default:
-            header('Location: /IS35126Group17/passenger/dashboard.php');
+            header('Location: /passenger/dashboard.php');
             break;
     }
     exit;
