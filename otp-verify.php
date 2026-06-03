@@ -12,12 +12,10 @@ session_start();
 require_once 'config/db.php';
 require_once 'includes/auth.php';
 
-// Generate CSRF token if not set
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Must have gone through login first
 if (empty($_SESSION['pre_auth_user_id'])) {
     header('Location: login.php');
     exit;
@@ -29,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
         $error = 'Invalid request. Please try again.';
     } else {
-        $otp_input = (string)trim($_POST['otp'] ?? '');
+        $otp_input = trim(preg_replace('/\s+/', '', $_POST['otp'] ?? ''));
         $user_id   = $_SESSION['pre_auth_user_id'];
 
         $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
@@ -39,14 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$user || empty($user['otp_code'])) {
             $error = 'OTP expired. Please log in again.';
         } elseif (new DateTime() > new DateTime($user['otp_expires_at'])) {
-            // Clear expired OTP from DB
             $stmt = $pdo->prepare('UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE id = ?');
             $stmt->execute([$user_id]);
             $error = 'OTP has expired. Please log in again.';
         } elseif ($otp_input !== $user['otp_code']) {
             $error = 'Incorrect OTP code. Please try again.';
         } else {
-            // OTP correct — clear it and create full session
             $stmt = $pdo->prepare('UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE id = ?');
             $stmt->execute([$user_id]);
 
