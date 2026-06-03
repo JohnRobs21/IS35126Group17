@@ -86,13 +86,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['smtp_debug'] = ($_SESSION['smtp_debug'] ?? '') . $str . "\n";
                     };
                     $mail->isSMTP();
-                    $mail->Host       = $_ENV['MAIL_HOST'];
+                    $mail->Host       = getenv['MAIL_HOST'];
                     $mail->SMTPAuth   = true;
-                    $mail->Username   = $_ENV['MAIL_USER'];
-                    $mail->Password   = $_ENV['MAIL_PASS'];
+                    $mail->Username   = getenv['MAIL_USER'];
+                    $mail->Password   = getenv['MAIL_PASS'];
                     $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
                     $mail->Port       = 465;
-                    $mail->setFrom($_ENV['MAIL_USER'], $_ENV['MAIL_FROM_NAME']);
+                    $mail->setFrom(getenv['MAIL_USER'], getenv['MAIL_FROM_NAME']);
                     $mail->addAddress($user['email'], $user['name']);
                     $mail->Subject = 'Your Login OTP Code — IS351 Airline';
                     $mail->isHTML(true);
