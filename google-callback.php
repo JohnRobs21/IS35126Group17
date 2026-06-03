@@ -15,9 +15,9 @@ require_once 'config/db.php';
 require_once 'includes/auth.php';
 
 $client = new Google\Client();
-$client->setClientId($_ENV['GOOGLE_CLIENT_ID']);
-$client->setClientSecret($_ENV['GOOGLE_CLIENT_SECRET']);
-$client->setRedirectUri($_ENV['GOOGLE_REDIRECT_URI']);
+$client->setClientId($_ENV['GOOGLE_CLIENT_ID'] ?? getenv('GOOGLE_CLIENT_ID'));
+$client->setClientSecret($_ENV['GOOGLE_CLIENT_SECRET'] ?? getenv('GOOGLE_CLIENT_SECRET'));
+$client->setRedirectUri($_ENV['GOOGLE_REDIRECT_URI'] ?? getenv('GOOGLE_REDIRECT_URI'));
 
 $error = '';
 
@@ -85,11 +85,13 @@ try {
     $_SESSION['user_id']       = $user['id'];
     $_SESSION['user_name']     = $user['name'];
     $_SESSION['role']          = $user['role'];
+    $_SESSION['last_activity'] = time();
 
     log_action($pdo, $user['id'], 'Logged in via Google OAuth');
     redirect_by_role($user['role']);
 
 } catch (Exception $e) {
-    header('Location: login.php?error=google_failed');
-    exit;
+    //header('Location: login.php?error=google_failed');
+    //exit;
+    die('Google error: ' . $e->getMessage());
 }
